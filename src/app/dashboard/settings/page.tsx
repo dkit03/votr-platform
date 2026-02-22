@@ -73,8 +73,8 @@ export default function SettingsPage() {
                             <div
                                 key={tier}
                                 className={`rounded-xl p-4 border ${isActive
-                                        ? 'border-votr-gold bg-votr-gold/5'
-                                        : 'border-votr-dark-border'
+                                    ? 'border-votr-gold bg-votr-gold/5'
+                                    : 'border-votr-dark-border'
                                     }`}
                             >
                                 <div className="flex items-center gap-2 mb-3">
@@ -103,14 +103,17 @@ export default function SettingsPage() {
                 </div>
             </div>
 
-            {/* Contact */}
+            {/* Upgrade CTA */}
             <div className="glass-card rounded-2xl p-6 text-center border-l-4 border-votr-purple">
-                <p className="text-sm text-votr-text-muted">
-                    Want to upgrade your plan? Contact us at{' '}
-                    <a href="mailto:hello@votr.app" className="text-votr-gold hover:underline">
-                        hello@votr.app
-                    </a>
+                <p className="text-sm text-votr-text-muted mb-3">
+                    Need more features? Upgrade your plan for section analytics, PDF reports, and more.
                 </p>
+                <a
+                    href="/dashboard/settings/pricing"
+                    className="inline-flex px-6 py-2.5 rounded-xl bg-votr-purple text-white font-bold text-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                    💎 View Plans & Pricing
+                </a>
             </div>
         </div>
     );

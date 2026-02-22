@@ -112,12 +112,26 @@ export default function ExportsPage() {
                 ))}
             </div>
 
-            {/* Coming soon */}
-            <div className="glass-card rounded-2xl p-6 text-center">
-                <p className="text-votr-text-muted text-sm">
-                    📄 <span className="font-medium text-white">PDF Sponsor Reports</span> coming in the <span className="text-votr-gold">Core</span> tier —
-                    branded, print-ready reports with charts and your band&apos;s logo
-                </p>
+            {/* Sponsor Report (PDF) */}
+            <div className="glass-card rounded-2xl p-6 border-l-4 border-votr-purple">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h3 className="font-bold text-white flex items-center gap-2">
+                            📄 Sponsor Report (PDF)
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-votr-gold/10 text-votr-gold uppercase">Core</span>
+                        </h3>
+                        <p className="text-votr-text-muted text-sm mt-1">
+                            Branded PDF with leaderboard, section performance, timeline charts, and data integrity scores.
+                            Perfect for sponsor presentations.
+                        </p>
+                    </div>
+                    <a
+                        href="/dashboard/exports/report"
+                        className="px-5 py-2.5 rounded-xl bg-votr-purple text-white font-bold text-sm transition-all hover:scale-[1.02] active:scale-[0.98] flex-shrink-0"
+                    >
+                        📊 Generate Report
+                    </a>
+                </div>
             </div>
         </div>
     );
