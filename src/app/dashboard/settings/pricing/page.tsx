@@ -11,7 +11,7 @@ interface PricingTier {
     tier: string;
 }
 
-const WHATSAPP_NUMBER = '18681234567'; // Update with your real WhatsApp number
+const WHATSAPP_NUMBER = '18684839544';
 
 const tiers: PricingTier[] = [
     {
@@ -159,8 +159,8 @@ export default function PricingPage() {
                                 <button
                                     onClick={() => handleContact(tier.name, tier.price)}
                                     className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all hover:scale-[1.02] active:scale-[0.98] ${tier.highlight
-                                            ? 'bg-votr-gold text-votr-dark'
-                                            : 'bg-white/10 text-white hover:bg-white/20'
+                                        ? 'bg-votr-gold text-votr-dark'
+                                        : 'bg-white/10 text-white hover:bg-white/20'
                                         }`}
                                 >
                                     💬 WhatsApp to Upgrade
