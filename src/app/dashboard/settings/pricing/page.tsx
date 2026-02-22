@@ -8,9 +8,10 @@ interface PricingTier {
     priceNote: string;
     features: string[];
     highlight: boolean;
-    cta: string;
     tier: string;
 }
+
+const WHATSAPP_NUMBER = '18681234567'; // Update with your real WhatsApp number
 
 const tiers: PricingTier[] = [
     {
@@ -19,7 +20,6 @@ const tiers: PricingTier[] = [
         priceNote: 'For testing & small groups',
         tier: 'starter',
         highlight: false,
-        cta: 'Current Plan',
         features: [
             'Up to 500 QR codes',
             'Song leaderboard',
@@ -34,7 +34,6 @@ const tiers: PricingTier[] = [
         priceNote: 'per Carnival season',
         tier: 'core',
         highlight: true,
-        cta: 'Upgrade to Core',
         features: [
             'Up to 5,000 QR codes',
             'Section-level analytics',
@@ -50,7 +49,6 @@ const tiers: PricingTier[] = [
         priceNote: 'per Carnival season',
         tier: 'pro',
         highlight: false,
-        cta: 'Upgrade to Pro',
         features: [
             'Up to 15,000 QR codes',
             'Real-time activity feed',
@@ -66,7 +64,6 @@ const tiers: PricingTier[] = [
         priceNote: 'For mas camps & organizations',
         tier: 'enterprise',
         highlight: false,
-        cta: 'Contact Sales',
         features: [
             'Unlimited QR codes',
             'Multi-band management',
@@ -86,34 +83,12 @@ export default function PricingPage() {
         }
         return 'starter';
     });
-    const [upgrading, setUpgrading] = useState<string | null>(null);
 
-    const handleUpgrade = async (tier: string) => {
-        if (tier === 'enterprise') {
-            window.open('mailto:sales@votr.app?subject=Enterprise Inquiry', '_blank');
-            return;
-        }
-
-        setUpgrading(tier);
-        try {
-            const user = JSON.parse(localStorage.getItem('votr_user') || '{}');
-            const res = await fetch('/api/payments/checkout', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ bandId: user.bandId, tier }),
-            });
-            const data = await res.json();
-
-            if (data.url) {
-                window.location.href = data.url;
-            } else if (data.message) {
-                alert(data.message);
-            }
-        } catch {
-            alert('Failed to start checkout. Please try again.');
-        } finally {
-            setUpgrading(null);
-        }
+    const handleContact = (tierName: string, tierPrice: string) => {
+        const msg = encodeURIComponent(
+            `Hi! I'm interested in the VOTR *${tierName}* plan (${tierPrice}). I'd like to upgrade my band. Can we discuss?`
+        );
+        window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`, '_blank');
     };
 
     const tierOrder = ['starter', 'core', 'pro', 'enterprise'];
@@ -125,6 +100,17 @@ export default function PricingPage() {
                 <h1 className="text-2xl font-bold">Plans & Pricing</h1>
                 <p className="text-votr-text-muted text-sm mt-1">
                     Choose the plan that fits your band&apos;s size and needs
+                </p>
+            </div>
+
+            {/* How it works */}
+            <div className="glass-card rounded-2xl p-5 border-l-4 border-votr-gold">
+                <p className="text-sm">
+                    <span className="text-votr-gold font-bold">📱 How to upgrade:</span>{' '}
+                    <span className="text-votr-text-muted">
+                        Tap the upgrade button to message us on WhatsApp. We&apos;ll confirm your plan and activate
+                        your features within minutes. Payment via bank transfer, Linx, or cash.
+                    </span>
                 </p>
             </div>
 
@@ -161,23 +147,56 @@ export default function PricingPage() {
                                 ))}
                             </ul>
 
-                            <button
-                                onClick={() => !isCurrent && !isDowngrade && handleUpgrade(tier.tier)}
-                                disabled={isCurrent || isDowngrade || upgrading === tier.tier}
-                                className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all ${isCurrent
-                                        ? 'bg-votr-green/10 text-votr-green cursor-default'
-                                        : isDowngrade
-                                            ? 'bg-white/5 text-votr-text-muted/40 cursor-not-allowed'
-                                            : tier.highlight
-                                                ? 'bg-votr-gold text-votr-dark hover:scale-[1.02] active:scale-[0.98]'
-                                                : 'bg-white/10 text-white hover:bg-white/20 active:scale-[0.98]'
-                                    } disabled:opacity-60`}
-                            >
-                                {upgrading === tier.tier ? 'Redirecting...' : isCurrent ? '✅ Current Plan' : isDowngrade ? 'Included in your plan' : isUpgrade ? tier.cta : tier.cta}
-                            </button>
+                            {isCurrent ? (
+                                <div className="w-full py-2.5 rounded-xl bg-votr-green/10 text-votr-green font-bold text-sm text-center">
+                                    ✅ Current Plan
+                                </div>
+                            ) : isDowngrade ? (
+                                <div className="w-full py-2.5 rounded-xl bg-white/5 text-votr-text-muted/40 font-bold text-sm text-center cursor-not-allowed">
+                                    Included in your plan
+                                </div>
+                            ) : isUpgrade ? (
+                                <button
+                                    onClick={() => handleContact(tier.name, tier.price)}
+                                    className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all hover:scale-[1.02] active:scale-[0.98] ${tier.highlight
+                                            ? 'bg-votr-gold text-votr-dark'
+                                            : 'bg-white/10 text-white hover:bg-white/20'
+                                        }`}
+                                >
+                                    💬 WhatsApp to Upgrade
+                                </button>
+                            ) : null}
                         </div>
                     );
                 })}
+            </div>
+
+            {/* Payment Methods */}
+            <div className="glass-card rounded-2xl p-6">
+                <h3 className="font-bold mb-4">💰 Accepted Payment Methods</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
+                        <span className="text-2xl">🏦</span>
+                        <div>
+                            <p className="font-medium text-white">Bank Transfer</p>
+                            <p className="text-votr-text-muted text-xs">Republic, Scotiabank, FCB, RBC</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
+                        <span className="text-2xl">💳</span>
+                        <div>
+                            <p className="font-medium text-white">Linx</p>
+                            <p className="text-votr-text-muted text-xs">In-person card payment</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
+                        <span className="text-2xl">💵</span>
+                        <div>
+                            <p className="font-medium text-white">Cash</p>
+                            <p className="text-votr-text-muted text-xs">In-person at your location</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* FAQ */}
@@ -186,8 +205,8 @@ export default function PricingPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     {[
                         { q: 'When does the season start?', a: 'Your plan activates immediately and covers the current Carnival season (Jan–March).' },
-                        { q: 'Can I upgrade mid-season?', a: 'Yes! Upgrade anytime and get access to new features instantly. No proration.' },
-                        { q: 'What payment methods?', a: 'We accept all major credit cards via Stripe. USD, TTD, and other currencies supported.' },
+                        { q: 'Can I upgrade mid-season?', a: 'Yes! Upgrade anytime and get access to new features instantly.' },
+                        { q: 'How fast is activation?', a: 'Once we confirm payment, your plan is upgraded within minutes — usually while we\'re still on WhatsApp!' },
                         { q: 'Is there a refund policy?', a: 'Full refund within 7 days of purchase if you haven\'t generated any QR codes.' },
                     ].map(faq => (
                         <div key={faq.q}>
