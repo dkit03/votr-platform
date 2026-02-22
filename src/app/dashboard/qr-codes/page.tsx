@@ -24,6 +24,7 @@ export default function QrCodesPage() {
     const [totalPages, setTotalPages] = useState(1);
     const [filter, setFilter] = useState<Filter>('all');
     const [loading, setLoading] = useState(true);
+    const [isAdmin, setIsAdmin] = useState(false);
 
     // Generate modal
     const [showGenerate, setShowGenerate] = useState(false);
@@ -31,6 +32,14 @@ export default function QrCodesPage() {
     const [genPrefix, setGenPrefix] = useState('VOTR');
     const [generating, setGenerating] = useState(false);
     const [genResult, setGenResult] = useState<string | null>(null);
+
+    useEffect(() => {
+        const stored = localStorage.getItem('votr_user');
+        if (stored) {
+            const user = JSON.parse(stored);
+            setIsAdmin(user.role === 'platform_admin' || user.role === 'super_admin');
+        }
+    }, []);
 
     useEffect(() => {
         loadCodes();
@@ -105,17 +114,19 @@ export default function QrCodesPage() {
                     >
                         🖨️ Print Codes
                     </Link>
-                    <button
-                        onClick={() => setShowGenerate(!showGenerate)}
-                        className="px-4 py-2 rounded-xl bg-votr-gold text-votr-dark font-bold text-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
-                    >
-                        {showGenerate ? 'Cancel' : '⚡ Generate Codes'}
-                    </button>
+                    {isAdmin && (
+                        <button
+                            onClick={() => setShowGenerate(!showGenerate)}
+                            className="px-4 py-2 rounded-xl bg-votr-gold text-votr-dark font-bold text-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                            {showGenerate ? 'Cancel' : '⚡ Generate Codes'}
+                        </button>
+                    )}
                 </div>
             </div>
 
-            {/* Generate Form */}
-            {showGenerate && (
+            {/* Generate Form — Admin only */}
+            {isAdmin && showGenerate && (
                 <form onSubmit={handleGenerate} className="glass-card rounded-2xl p-6 space-y-4">
                     <h3 className="font-bold">Generate QR Codes</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

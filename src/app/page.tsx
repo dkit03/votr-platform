@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Home() {
   return (
@@ -9,13 +10,14 @@ export default function Home() {
 
       {/* Logo */}
       <div className="text-center mb-12 animate-slide-up">
-        <h1 className="text-6xl font-bold tracking-tight mb-2">
-          <span className="text-votr-gold">V</span>
-          <span className="text-white">OTR</span>
-        </h1>
-        <p className="text-votr-text-muted text-sm tracking-widest uppercase">
-          Voice of the Reveller
-        </p>
+        <Image
+          src="/icons/logo-full.png"
+          alt="VOTR — Voice of the Reveller"
+          width={280}
+          height={120}
+          className="mx-auto"
+          priority
+        />
       </div>
 
       {/* Tagline */}

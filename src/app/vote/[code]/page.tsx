@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Image from 'next/image';
 import { SongCard } from '@/components/vote/SongCard';
 import { VoteConfirmation } from '@/components/vote/VoteConfirmation';
 import { AlreadyVoted } from '@/components/vote/AlreadyVoted';
@@ -140,13 +141,13 @@ export default function VotePage({ params }: { params: Promise<{ code: string }>
             <div className="relative z-10 flex min-h-dvh flex-col">
                 {/* Header */}
                 <header className="flex flex-col items-center pt-8 pb-4 px-4">
-                    <div className="text-3xl font-bold tracking-tight">
-                        <span className="text-votr-gold">V</span>
-                        <span className="text-white">OTR</span>
-                    </div>
-                    <p className="text-votr-text-muted text-xs tracking-widest uppercase mt-1">
-                        Voice of the Reveller
-                    </p>
+                    <Image
+                        src="/icons/logo-full.png"
+                        alt="VOTR"
+                        width={140}
+                        height={60}
+                        priority
+                    />
                     {band && (
                         <div className="mt-4 px-4 py-1.5 rounded-full glass-card">
                             <span className="text-sm font-medium" style={{ color: band.colors?.primary || '#FFB800' }}>

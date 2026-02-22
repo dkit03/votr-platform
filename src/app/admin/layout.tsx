@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface UserInfo {
     id: string;
@@ -66,10 +67,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             `}>
                 <div className="p-6 border-b border-votr-dark-border">
                     <Link href="/admin" className="flex items-center gap-2">
-                        <span className="text-2xl font-bold">
-                            <span className="text-votr-purple">V</span>
-                            <span className="text-white">OTR</span>
-                        </span>
+                        <Image
+                            src="/icons/logo-full.png"
+                            alt="VOTR"
+                            width={100}
+                            height={44}
+                        />
                     </Link>
                     <p className="text-votr-text-muted text-xs mt-2">
                         Platform Admin
@@ -141,7 +144,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
-                    <span className="font-bold"><span className="text-votr-purple">V</span>OTR Admin</span>
+                    <Image src="/icons/logo-full.png" alt="VOTR Admin" width={80} height={35} />
                     <div className="w-9" />
                 </header>
                 <main className="flex-1 p-4 lg:p-8 overflow-y-auto">{children}</main>

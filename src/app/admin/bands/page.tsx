@@ -16,6 +16,14 @@ interface Band {
     created_at: string;
 }
 
+interface BandAdmin {
+    id: string;
+    email: string;
+    role: string;
+    created_at: string;
+    user_id: string;
+}
+
 export default function AdminBandsPage() {
     const [bands, setBands] = useState<Band[]>([]);
     const [loading, setLoading] = useState(true);
@@ -27,6 +35,14 @@ export default function AdminBandsPage() {
     const [tier, setTier] = useState('starter');
     const [email, setEmail] = useState('');
     const [creating, setCreating] = useState(false);
+
+    // Band leader management
+    const [expandedBand, setExpandedBand] = useState<string | null>(null);
+    const [bandAdmins, setBandAdmins] = useState<Record<string, BandAdmin[]>>({});
+    const [leaderEmail, setLeaderEmail] = useState('');
+    const [addingLeader, setAddingLeader] = useState(false);
+    const [leaderError, setLeaderError] = useState('');
+    const [leaderSuccess, setLeaderSuccess] = useState('');
 
     useEffect(() => { loadBands(); }, []);
 
@@ -79,6 +95,70 @@ export default function AdminBandsPage() {
         if (res.ok) {
             setBands(prev => prev.map(b => b.id === band.id ? { ...b, tier: newTier } : b));
         }
+    };
+
+    const loadBandAdmins = async (bandId: string) => {
+        try {
+            const res = await fetch(`/api/admin/bands/${bandId}/admins`);
+            const data = await res.json();
+            if (res.ok) {
+                setBandAdmins(prev => ({ ...prev, [bandId]: data.admins || [] }));
+            }
+        } catch { /* ignore */ }
+    };
+
+    const toggleExpand = (bandId: string) => {
+        if (expandedBand === bandId) {
+            setExpandedBand(null);
+        } else {
+            setExpandedBand(bandId);
+            setLeaderEmail('');
+            setLeaderError('');
+            setLeaderSuccess('');
+            if (!bandAdmins[bandId]) {
+                loadBandAdmins(bandId);
+            }
+        }
+    };
+
+    const handleAddLeader = async (bandId: string) => {
+        if (!leaderEmail.trim()) return;
+        setAddingLeader(true);
+        setLeaderError('');
+        setLeaderSuccess('');
+
+        try {
+            const res = await fetch(`/api/admin/bands/${bandId}/admins`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: leaderEmail.trim().toLowerCase() }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setLeaderSuccess(`✅ ${leaderEmail} added as band leader`);
+                setLeaderEmail('');
+                loadBandAdmins(bandId);
+            } else {
+                setLeaderError(data.error || 'Failed to add leader.');
+            }
+        } catch {
+            setLeaderError('Network error. Please try again.');
+        } finally {
+            setAddingLeader(false);
+        }
+    };
+
+    const handleRemoveLeader = async (bandId: string, adminId: string, adminEmail: string) => {
+        if (!confirm(`Remove ${adminEmail} as band leader?`)) return;
+
+        try {
+            const res = await fetch(`/api/admin/bands/${bandId}/admins?admin_id=${adminId}`, {
+                method: 'DELETE',
+            });
+            if (res.ok) {
+                loadBandAdmins(bandId);
+            }
+        } catch { /* ignore */ }
     };
 
     const tierColors: Record<string, string> = {
@@ -188,16 +268,94 @@ export default function AdminBandsPage() {
                             <button
                                 onClick={() => handleToggle(band)}
                                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${band.is_active
-                                        ? 'bg-votr-red/10 text-votr-red hover:bg-votr-red/20'
-                                        : 'bg-votr-green/10 text-votr-green hover:bg-votr-green/20'
+                                    ? 'bg-votr-red/10 text-votr-red hover:bg-votr-red/20'
+                                    : 'bg-votr-green/10 text-votr-green hover:bg-votr-green/20'
                                     }`}
                             >
                                 {band.is_active ? 'Deactivate' : 'Activate'}
+                            </button>
+                            <button
+                                onClick={() => toggleExpand(band.id)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${expandedBand === band.id
+                                    ? 'bg-votr-blue/10 text-votr-blue'
+                                    : 'bg-white/5 text-votr-text-muted hover:bg-white/10 hover:text-white'
+                                    }`}
+                            >
+                                👤 {expandedBand === band.id ? 'Hide Leaders' : 'Manage Leaders'}
                             </button>
                             <span className="text-votr-text-muted text-[10px] ml-auto">
                                 Created {new Date(band.created_at).toLocaleDateString()}
                             </span>
                         </div>
+
+                        {/* Band Leaders Section */}
+                        {expandedBand === band.id && (
+                            <div className="pt-3 mt-1 border-t border-votr-dark-border space-y-3 animate-slide-up">
+                                <h4 className="text-sm font-bold text-votr-blue flex items-center gap-2">
+                                    👤 Band Leaders
+                                    <span className="text-[10px] text-votr-text-muted font-normal">
+                                        (can log in to see this band&apos;s dashboard)
+                                    </span>
+                                </h4>
+
+                                {/* Current leaders list */}
+                                {bandAdmins[band.id]?.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {bandAdmins[band.id].map(admin => (
+                                            <div key={admin.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-votr-dark/50">
+                                                <div className="w-7 h-7 rounded-full bg-votr-blue/20 flex items-center justify-center text-xs">
+                                                    👤
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm text-white truncate">{admin.email}</p>
+                                                    <p className="text-[10px] text-votr-text-muted capitalize">
+                                                        {admin.role} · Added {new Date(admin.created_at).toLocaleDateString()}
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleRemoveLeader(band.id, admin.id, admin.email)}
+                                                    className="px-2 py-1 rounded-md text-[10px] text-votr-red/70 hover:text-votr-red hover:bg-votr-red/10 transition-colors"
+                                                    title="Remove leader"
+                                                >
+                                                    ✕ Remove
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-votr-text-muted/60 italic">
+                                        No band leaders added yet. Add one below.
+                                    </p>
+                                )}
+
+                                {/* Add leader form */}
+                                <div className="flex gap-2">
+                                    <input
+                                        type="email"
+                                        value={leaderEmail}
+                                        onChange={e => { setLeaderEmail(e.target.value); setLeaderError(''); setLeaderSuccess(''); }}
+                                        placeholder="bandleader@example.com"
+                                        className="flex-1 px-3 py-2 rounded-lg bg-votr-dark border border-votr-dark-border text-white text-sm placeholder-votr-text-muted/40 focus:outline-none focus:border-votr-blue transition-colors"
+                                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddLeader(band.id); } }}
+                                    />
+                                    <button
+                                        onClick={() => handleAddLeader(band.id)}
+                                        disabled={addingLeader || !leaderEmail.trim()}
+                                        className="px-4 py-2 rounded-lg bg-votr-blue/10 text-votr-blue text-sm font-medium transition-all hover:bg-votr-blue/20 disabled:opacity-40"
+                                    >
+                                        {addingLeader ? '...' : '+ Add'}
+                                    </button>
+                                </div>
+
+                                {/* Feedback messages */}
+                                {leaderError && (
+                                    <p className="text-xs text-votr-red">{leaderError}</p>
+                                )}
+                                {leaderSuccess && (
+                                    <p className="text-xs text-votr-green">{leaderSuccess}</p>
+                                )}
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>

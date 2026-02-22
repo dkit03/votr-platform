@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 type AuthStep = 'email' | 'otp' | 'loading';
 
@@ -86,13 +87,14 @@ export default function DashboardLoginPage() {
 
             {/* Logo */}
             <div className="text-center mb-8">
-                <h1 className="text-4xl font-bold tracking-tight">
-                    <span className="text-votr-gold">V</span>
-                    <span className="text-white">OTR</span>
-                </h1>
-                <p className="text-votr-text-muted text-xs tracking-widest uppercase mt-1">
-                    Band Dashboard
-                </p>
+                <Image
+                    src="/icons/logo-full.png"
+                    alt="VOTR"
+                    width={180}
+                    height={80}
+                    className="mx-auto"
+                    priority
+                />
             </div>
 
             {/* Login Card */}

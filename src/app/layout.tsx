@@ -17,6 +17,9 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "VOTR",
   },
+  icons: {
+    apple: "/icons/icon-192.png",
+  },
   openGraph: {
     title: "VOTR — Voice of the Reveller",
     description: "Vote for your Road March song. One scan. One vote. Your voice.",
@@ -41,7 +44,19 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${inter.variable} font-sans antialiased bg-votr-dark text-white`}>
         {children}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                  navigator.serviceWorker.register('/sw.js').catch(() => {});
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );
 }
+

@@ -18,8 +18,14 @@ export default function SongsPage() {
     const [newTitle, setNewTitle] = useState('');
     const [newArtist, setNewArtist] = useState('');
     const [saving, setSaving] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
 
     useEffect(() => {
+        const stored = localStorage.getItem('votr_user');
+        if (stored) {
+            const user = JSON.parse(stored);
+            setIsAdmin(user.role === 'platform_admin' || user.role === 'super_admin');
+        }
         loadSongs();
     }, []);
 
@@ -78,19 +84,21 @@ export default function SongsPage() {
                 <div>
                     <h1 className="text-2xl font-bold">Songs</h1>
                     <p className="text-votr-text-muted text-sm mt-1">
-                        Manage Road March song list
+                        {isAdmin ? 'Manage Road March song list' : 'Road March song list'}
                     </p>
                 </div>
-                <button
-                    onClick={() => setShowAdd(!showAdd)}
-                    className="px-4 py-2 rounded-xl bg-votr-gold text-votr-dark font-bold text-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
-                >
-                    {showAdd ? 'Cancel' : '+ Add Song'}
-                </button>
+                {isAdmin && (
+                    <button
+                        onClick={() => setShowAdd(!showAdd)}
+                        className="px-4 py-2 rounded-xl bg-votr-gold text-votr-dark font-bold text-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                        {showAdd ? 'Cancel' : '+ Add Song'}
+                    </button>
+                )}
             </div>
 
-            {/* Add Song Form */}
-            {showAdd && (
+            {/* Add Song Form — Admin only */}
+            {isAdmin && showAdd && (
                 <form onSubmit={handleAddSong} className="glass-card rounded-2xl p-6 space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
@@ -130,7 +138,7 @@ export default function SongsPage() {
             <div className="space-y-3">
                 {songs.length === 0 ? (
                     <div className="glass-card rounded-2xl p-8 text-center">
-                        <p className="text-votr-text-muted">No songs added yet. Add some to get started!</p>
+                        <p className="text-votr-text-muted">No songs added yet.</p>
                     </div>
                 ) : (
                     songs.map((song, index) => (
@@ -145,15 +153,25 @@ export default function SongsPage() {
                                 <h3 className="font-semibold text-white truncate">{song.title}</h3>
                                 <p className="text-votr-text-muted text-sm truncate">{song.artist}</p>
                             </div>
-                            <button
-                                onClick={() => handleToggle(song.id, song.is_active)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${song.is_active
+                            {isAdmin ? (
+                                <button
+                                    onClick={() => handleToggle(song.id, song.is_active)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${song.is_active
                                         ? 'bg-votr-green/10 text-votr-green hover:bg-votr-green/20'
                                         : 'bg-votr-red/10 text-votr-red hover:bg-votr-red/20'
+                                        }`}
+                                >
+                                    {song.is_active ? 'Active' : 'Inactive'}
+                                </button>
+                            ) : (
+                                <span className={`px-3 py-1.5 rounded-lg text-xs font-medium ${song.is_active
+                                    ? 'bg-votr-green/10 text-votr-green'
+                                    : 'bg-votr-red/10 text-votr-red'
                                     }`}
-                            >
-                                {song.is_active ? 'Active' : 'Inactive'}
-                            </button>
+                                >
+                                    {song.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                            )}
                         </div>
                     ))
                 )}
