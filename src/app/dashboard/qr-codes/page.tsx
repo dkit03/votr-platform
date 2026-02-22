@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 interface QrCode {
     id: string;
@@ -97,12 +98,20 @@ export default function QrCodesPage() {
                         {total.toLocaleString()} codes total
                     </p>
                 </div>
-                <button
-                    onClick={() => setShowGenerate(!showGenerate)}
-                    className="px-4 py-2 rounded-xl bg-votr-gold text-votr-dark font-bold text-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
-                >
-                    {showGenerate ? 'Cancel' : '⚡ Generate Codes'}
-                </button>
+                <div className="flex items-center gap-3">
+                    <Link
+                        href="/dashboard/qr-codes/print"
+                        className="px-4 py-2 rounded-xl border border-votr-dark-border text-votr-text-muted font-medium text-sm transition-all hover:border-votr-gold/30 hover:text-white"
+                    >
+                        🖨️ Print Codes
+                    </Link>
+                    <button
+                        onClick={() => setShowGenerate(!showGenerate)}
+                        className="px-4 py-2 rounded-xl bg-votr-gold text-votr-dark font-bold text-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                        {showGenerate ? 'Cancel' : '⚡ Generate Codes'}
+                    </button>
+                </div>
             </div>
 
             {/* Generate Form */}
@@ -115,12 +124,12 @@ export default function QrCodesPage() {
                             <input
                                 type="number"
                                 value={genCount}
-                                onChange={(e) => setGenCount(Math.min(500, parseInt(e.target.value) || 0))}
+                                onChange={(e) => setGenCount(Math.min(2000, parseInt(e.target.value) || 0))}
                                 min={1}
-                                max={500}
+                                max={2000}
                                 className="w-full px-4 py-3 rounded-xl bg-votr-dark border border-votr-dark-border text-white focus:outline-none focus:border-votr-gold transition-colors"
                             />
-                            <p className="text-votr-text-muted text-xs mt-1">Max 500 per batch</p>
+                            <p className="text-votr-text-muted text-xs mt-1">Max 2,000 per batch</p>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-votr-text-muted mb-1">Code Prefix</label>
@@ -154,8 +163,8 @@ export default function QrCodesPage() {
                         key={f.value}
                         onClick={() => { setFilter(f.value); setPage(1); }}
                         className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filter === f.value
-                                ? 'bg-votr-gold/10 text-votr-gold'
-                                : 'text-votr-text-muted hover:bg-white/5 hover:text-white'
+                            ? 'bg-votr-gold/10 text-votr-gold'
+                            : 'text-votr-text-muted hover:bg-white/5 hover:text-white'
                             }`}
                     >
                         {f.label}

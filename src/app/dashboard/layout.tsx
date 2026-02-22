@@ -16,6 +16,7 @@ interface UserInfo {
 const navItems = [
     { href: '/dashboard', label: 'Overview', icon: '📊', tier: 'starter' },
     { href: '/dashboard/sections', label: 'Sections', icon: '👥', tier: 'core' },
+    { href: '/dashboard/sections/assign', label: 'Assign Sections', icon: '📋', tier: 'core' },
     { href: '/dashboard/activity', label: 'Activity', icon: '📈', tier: 'pro' },
     { href: '/dashboard/quality', label: 'Quality', icon: '🛡️', tier: 'core' },
     { href: '/dashboard/songs', label: 'Songs', icon: '🎵', tier: 'starter' },

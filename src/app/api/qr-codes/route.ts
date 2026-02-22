@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 
         if (filter === 'voted') query = query.eq('voted', true);
         if (filter === 'unvoted') query = query.eq('voted', false);
-        if (filter === 'scanned') query = query.not('scanned_at', 'is', null);
+        if (filter === 'scanned') query = query.not('scanned_at', 'is', null).eq('voted', false);
 
         const { data: qrCodes, count, error } = await query;
 
@@ -57,8 +57,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'bandId and count required.' }, { status: 400 });
         }
 
-        if (count > 500) {
-            return NextResponse.json({ error: 'Max 500 codes per batch.' }, { status: 400 });
+        if (count > 2000) {
+            return NextResponse.json({ error: 'Max 2,000 codes per batch.' }, { status: 400 });
         }
 
         const supabase = createServiceClient();
