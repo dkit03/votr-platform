@@ -10,6 +10,7 @@ export async function GET() {
         const { data: songs, error } = await supabase
             .from('songs')
             .select('*')
+            .order('display_order', { ascending: true, nullsFirst: false })
             .order('title');
 
         if (error) {

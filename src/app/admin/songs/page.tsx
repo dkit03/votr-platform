@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface Song {
     id: string;
@@ -8,6 +8,7 @@ interface Song {
     artist: string;
     year: number;
     is_active: boolean;
+    display_order: number;
     created_at: string;
 }
 
@@ -19,6 +20,12 @@ export default function AdminSongsPage() {
     const [artist, setArtist] = useState('');
     const [year, setYear] = useState(2027);
     const [adding, setAdding] = useState(false);
+    const [saving, setSaving] = useState(false);
+
+    // Drag state
+    const dragItem = useRef<number | null>(null);
+    const dragOverItem = useRef<number | null>(null);
+    const [dragIdx, setDragIdx] = useState<number | null>(null);
 
     useEffect(() => { loadSongs(); }, []);
 
@@ -64,6 +71,68 @@ export default function AdminSongsPage() {
         if (res.ok) setSongs(prev => prev.filter(s => s.id !== song.id));
     };
 
+    // Drag handlers
+    const handleDragStart = (index: number) => {
+        dragItem.current = index;
+        setDragIdx(index);
+    };
+
+    const handleDragEnter = (index: number) => {
+        dragOverItem.current = index;
+    };
+
+    const handleDragEnd = async () => {
+        if (dragItem.current === null || dragOverItem.current === null) {
+            setDragIdx(null);
+            return;
+        }
+
+        const items = [...songs];
+        const draggedItem = items[dragItem.current];
+        items.splice(dragItem.current, 1);
+        items.splice(dragOverItem.current, 0, draggedItem);
+
+        dragItem.current = null;
+        dragOverItem.current = null;
+        setDragIdx(null);
+
+        setSongs(items);
+
+        // Save new order to backend
+        setSaving(true);
+        try {
+            await fetch('/api/songs/reorder', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderedIds: items.map(s => s.id) }),
+            });
+        } catch { /* ignore */ } finally {
+            setSaving(false);
+        }
+    };
+
+    // Touch drag support
+    const handleTouchStart = (index: number) => {
+        dragItem.current = index;
+        setDragIdx(index);
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        const touch = e.touches[0];
+        const elem = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (elem) {
+            const songRow = elem.closest('[data-song-index]');
+            if (songRow) {
+                const idx = parseInt(songRow.getAttribute('data-song-index') || '0');
+                dragOverItem.current = idx;
+            }
+        }
+    };
+
+    const handleTouchEnd = () => {
+        handleDragEnd();
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -82,6 +151,7 @@ export default function AdminSongsPage() {
                     <h1 className="text-2xl font-bold">Song Library</h1>
                     <p className="text-votr-text-muted text-sm mt-1">
                         {active.length} active · {inactive.length} inactive · {songs.length} total
+                        {saving && <span className="ml-2 text-votr-gold">· Saving order...</span>}
                     </p>
                 </div>
                 <button
@@ -90,6 +160,12 @@ export default function AdminSongsPage() {
                 >
                     {showAdd ? 'Cancel' : '🎵 Add Song'}
                 </button>
+            </div>
+
+            {/* Drag hint */}
+            <div className="flex items-center gap-2 text-votr-text-muted text-xs">
+                <span>↕️</span>
+                <span>Drag songs to reorder — the order is reflected everywhere (voter, dashboard, reports)</span>
             </div>
 
             {showAdd && (
@@ -118,10 +194,34 @@ export default function AdminSongsPage() {
                 </form>
             )}
 
-            {/* Songs list */}
+            {/* Songs list — draggable */}
             <div className="space-y-2">
                 {songs.map((song, idx) => (
-                    <div key={song.id} className={`glass-card rounded-xl p-4 flex items-center gap-4 ${!song.is_active ? 'opacity-50' : ''}`}>
+                    <div
+                        key={song.id}
+                        data-song-index={idx}
+                        draggable
+                        onDragStart={() => handleDragStart(idx)}
+                        onDragEnter={() => handleDragEnter(idx)}
+                        onDragEnd={handleDragEnd}
+                        onDragOver={(e) => e.preventDefault()}
+                        onTouchStart={() => handleTouchStart(idx)}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                        className={`glass-card rounded-xl p-4 flex items-center gap-4 cursor-grab active:cursor-grabbing transition-all ${!song.is_active ? 'opacity-50' : ''
+                            } ${dragIdx === idx ? 'scale-[1.02] ring-2 ring-votr-purple/50 shadow-lg' : ''}`}
+                    >
+                        {/* Drag handle */}
+                        <div className="flex-shrink-0 text-votr-text-muted/40 hover:text-votr-text-muted cursor-grab select-none">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                <circle cx="5" cy="3" r="1.5" />
+                                <circle cx="11" cy="3" r="1.5" />
+                                <circle cx="5" cy="8" r="1.5" />
+                                <circle cx="11" cy="8" r="1.5" />
+                                <circle cx="5" cy="13" r="1.5" />
+                                <circle cx="11" cy="13" r="1.5" />
+                            </svg>
+                        </div>
                         <span className="text-votr-text-muted font-mono text-sm w-6">{idx + 1}</span>
                         <div className="flex-1 min-w-0">
                             <p className="text-white font-medium truncate">{song.title}</p>
@@ -131,8 +231,8 @@ export default function AdminSongsPage() {
                             <button
                                 onClick={() => toggleActive(song)}
                                 className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${song.is_active
-                                        ? 'bg-votr-green/10 text-votr-green'
-                                        : 'bg-votr-text-muted/10 text-votr-text-muted'
+                                    ? 'bg-votr-green/10 text-votr-green'
+                                    : 'bg-votr-text-muted/10 text-votr-text-muted'
                                     }`}
                             >
                                 {song.is_active ? 'Active' : 'Inactive'}

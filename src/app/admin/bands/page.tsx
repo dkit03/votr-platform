@@ -44,6 +44,14 @@ export default function AdminBandsPage() {
     const [leaderError, setLeaderError] = useState('');
     const [leaderSuccess, setLeaderSuccess] = useState('');
 
+    // Edit mode
+    const [editingBand, setEditingBand] = useState<string | null>(null);
+    const [editName, setEditName] = useState('');
+    const [editEmail, setEditEmail] = useState('');
+    const [editPhone, setEditPhone] = useState('');
+    const [editMax, setEditMax] = useState(3000);
+    const [savingEdit, setSavingEdit] = useState(false);
+
     useEffect(() => { loadBands(); }, []);
 
     const loadBands = async () => {
@@ -161,6 +169,46 @@ export default function AdminBandsPage() {
         } catch { /* ignore */ }
     };
 
+    const startEdit = (band: Band) => {
+        setEditingBand(band.id);
+        setEditName(band.name);
+        setEditEmail(band.contact_email || '');
+        setEditPhone(band.contact_phone || '');
+        setEditMax(band.max_masqueraders);
+    };
+
+    const cancelEdit = () => {
+        setEditingBand(null);
+    };
+
+    const handleSaveEdit = async (bandId: string) => {
+        setSavingEdit(true);
+        try {
+            const res = await fetch(`/api/admin/bands/${bandId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: editName,
+                    contact_email: editEmail || null,
+                    contact_phone: editPhone || null,
+                    max_masqueraders: editMax,
+                }),
+            });
+            if (res.ok) {
+                setBands(prev => prev.map(b => b.id === bandId ? {
+                    ...b,
+                    name: editName,
+                    contact_email: editEmail || null,
+                    contact_phone: editPhone || null,
+                    max_masqueraders: editMax,
+                } : b));
+                setEditingBand(null);
+            }
+        } catch { /* ignore */ } finally {
+            setSavingEdit(false);
+        }
+    };
+
     const tierColors: Record<string, string> = {
         starter: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
         core: 'bg-votr-gold/10 text-votr-gold border-votr-gold/20',
@@ -233,60 +281,109 @@ export default function AdminBandsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {bands.map(band => (
                     <div key={band.id} className="glass-card rounded-2xl p-5 space-y-3">
-                        <div className="flex items-start justify-between">
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-2 h-2 rounded-full ${band.is_active ? 'bg-votr-green' : 'bg-votr-red'}`} />
-                                    <h3 className="font-bold text-white">{band.name}</h3>
+                        {editingBand === band.id ? (
+                            /* EDIT MODE */
+                            <>
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-[10px] text-votr-text-muted mb-1">Band Name</label>
+                                        <input type="text" value={editName} onChange={e => setEditName(e.target.value)}
+                                            className="w-full px-3 py-2 rounded-lg bg-votr-dark border border-votr-dark-border text-white text-sm focus:outline-none focus:border-votr-purple" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-[10px] text-votr-text-muted mb-1">Contact Email</label>
+                                            <input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)}
+                                                className="w-full px-3 py-2 rounded-lg bg-votr-dark border border-votr-dark-border text-white text-sm focus:outline-none focus:border-votr-purple" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] text-votr-text-muted mb-1">Phone</label>
+                                            <input type="text" value={editPhone} onChange={e => setEditPhone(e.target.value)}
+                                                className="w-full px-3 py-2 rounded-lg bg-votr-dark border border-votr-dark-border text-white text-sm focus:outline-none focus:border-votr-purple" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] text-votr-text-muted mb-1">Max Masqueraders</label>
+                                        <input type="number" value={editMax} onChange={e => setEditMax(parseInt(e.target.value) || 0)}
+                                            className="w-32 px-3 py-2 rounded-lg bg-votr-dark border border-votr-dark-border text-white text-sm focus:outline-none focus:border-votr-purple" />
+                                    </div>
                                 </div>
-                                <p className="text-votr-text-muted text-xs mt-1">/{band.slug}</p>
-                            </div>
-                            <select
-                                value={band.tier}
-                                onChange={e => handleTierChange(band, e.target.value)}
-                                className={`px-2 py-1 rounded-lg text-xs capitalize border ${tierColors[band.tier]} bg-transparent cursor-pointer`}
-                            >
-                                <option value="starter" className="bg-votr-dark">Starter</option>
-                                <option value="core" className="bg-votr-dark">Core</option>
-                                <option value="pro" className="bg-votr-dark">Pro</option>
-                                <option value="enterprise" className="bg-votr-dark">Enterprise</option>
-                            </select>
-                        </div>
+                                <div className="flex gap-2 pt-2 border-t border-votr-dark-border">
+                                    <button onClick={() => handleSaveEdit(band.id)} disabled={savingEdit}
+                                        className="px-4 py-1.5 rounded-lg bg-votr-green/10 text-votr-green text-xs font-medium hover:bg-votr-green/20 disabled:opacity-50">
+                                        {savingEdit ? 'Saving...' : '✓ Save'}
+                                    </button>
+                                    <button onClick={cancelEdit}
+                                        className="px-4 py-1.5 rounded-lg bg-white/5 text-votr-text-muted text-xs font-medium hover:bg-white/10">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            /* VIEW MODE */
+                            <>
+                                <div className="flex items-start justify-between">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-2 h-2 rounded-full ${band.is_active ? 'bg-votr-green' : 'bg-votr-red'}`} />
+                                            <h3 className="font-bold text-white">{band.name}</h3>
+                                        </div>
+                                        <p className="text-votr-text-muted text-xs mt-1">/{band.slug}</p>
+                                    </div>
+                                    <select
+                                        value={band.tier}
+                                        onChange={e => handleTierChange(band, e.target.value)}
+                                        className={`px-2 py-1 rounded-lg text-xs capitalize border ${tierColors[band.tier]} bg-transparent cursor-pointer`}
+                                    >
+                                        <option value="starter" className="bg-votr-dark">Starter</option>
+                                        <option value="core" className="bg-votr-dark">Core</option>
+                                        <option value="pro" className="bg-votr-dark">Pro</option>
+                                        <option value="enterprise" className="bg-votr-dark">Enterprise</option>
+                                    </select>
+                                </div>
 
-                        <div className="grid grid-cols-2 gap-3 text-xs">
-                            <div>
-                                <span className="text-votr-text-muted">Email: </span>
-                                <span className="text-white">{band.contact_email || '—'}</span>
-                            </div>
-                            <div>
-                                <span className="text-votr-text-muted">Max: </span>
-                                <span className="text-white">{band.max_masqueraders.toLocaleString()}</span>
-                            </div>
-                        </div>
+                                <div className="grid grid-cols-2 gap-3 text-xs">
+                                    <div>
+                                        <span className="text-votr-text-muted">Email: </span>
+                                        <span className="text-white">{band.contact_email || '—'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-votr-text-muted">Max: </span>
+                                        <span className="text-white">{band.max_masqueraders.toLocaleString()}</span>
+                                    </div>
+                                </div>
 
-                        <div className="flex items-center gap-2 pt-1 border-t border-votr-dark-border">
-                            <button
-                                onClick={() => handleToggle(band)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${band.is_active
-                                    ? 'bg-votr-red/10 text-votr-red hover:bg-votr-red/20'
-                                    : 'bg-votr-green/10 text-votr-green hover:bg-votr-green/20'
-                                    }`}
-                            >
-                                {band.is_active ? 'Deactivate' : 'Activate'}
-                            </button>
-                            <button
-                                onClick={() => toggleExpand(band.id)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${expandedBand === band.id
-                                    ? 'bg-votr-blue/10 text-votr-blue'
-                                    : 'bg-white/5 text-votr-text-muted hover:bg-white/10 hover:text-white'
-                                    }`}
-                            >
-                                👤 {expandedBand === band.id ? 'Hide Leaders' : 'Manage Leaders'}
-                            </button>
-                            <span className="text-votr-text-muted text-[10px] ml-auto">
-                                Created {new Date(band.created_at).toLocaleDateString()}
-                            </span>
-                        </div>
+                                <div className="flex items-center gap-2 pt-1 border-t border-votr-dark-border">
+                                    <button
+                                        onClick={() => handleToggle(band)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${band.is_active
+                                            ? 'bg-votr-red/10 text-votr-red hover:bg-votr-red/20'
+                                            : 'bg-votr-green/10 text-votr-green hover:bg-votr-green/20'
+                                            }`}
+                                    >
+                                        {band.is_active ? 'Deactivate' : 'Activate'}
+                                    </button>
+                                    <button
+                                        onClick={() => startEdit(band)}
+                                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/5 text-votr-text-muted hover:bg-white/10 hover:text-white transition-colors"
+                                    >
+                                        ✏️ Edit
+                                    </button>
+                                    <button
+                                        onClick={() => toggleExpand(band.id)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${expandedBand === band.id
+                                            ? 'bg-votr-blue/10 text-votr-blue'
+                                            : 'bg-white/5 text-votr-text-muted hover:bg-white/10 hover:text-white'
+                                            }`}
+                                    >
+                                        👤 {expandedBand === band.id ? 'Hide Leaders' : 'Manage Leaders'}
+                                    </button>
+                                    <span className="text-votr-text-muted text-[10px] ml-auto">
+                                        Created {new Date(band.created_at).toLocaleDateString()}
+                                    </span>
+                                </div>
+                            </>
+                        )}
 
                         {/* Band Leaders Section */}
                         {expandedBand === band.id && (
