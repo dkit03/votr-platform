@@ -50,7 +50,7 @@ export default function AdminSectionAssignPage() {
 
     const loadSections = async () => {
         try {
-            const res = await fetch(`/api/analytics/sections?bandId=${selectedBand}`);
+            const res = await fetch(`/api/sections?band_id=${selectedBand}`);
             const data = await res.json();
             if (data.sections) setSections(data.sections);
         } catch { /* ignore */ }
