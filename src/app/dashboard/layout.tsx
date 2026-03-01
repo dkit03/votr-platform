@@ -23,6 +23,7 @@ const navItems = [
     { href: '/dashboard/songs', label: 'Songs', icon: '🎵', tier: 'starter' },
     { href: '/dashboard/qr-codes', label: 'QR Codes', icon: '📱', tier: 'starter', adminOnly: true },
     { href: '/dashboard/exports', label: 'Exports', icon: '📥', tier: 'starter' },
+    { href: '/dashboard/settings/pricing', label: 'Pricing', icon: '💎', tier: 'starter' },
     { href: '/dashboard/settings', label: 'Settings', icon: '⚙️', tier: 'starter', adminOnly: true },
 ];
 
