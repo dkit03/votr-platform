@@ -21,6 +21,11 @@ interface Band {
     slug: string;
 }
 
+interface Section {
+    id: string;
+    name: string;
+}
+
 type Filter = 'all' | 'voted' | 'unvoted' | 'scanned';
 
 export default function AdminQrCodesPage() {
@@ -35,6 +40,10 @@ export default function AdminQrCodesPage() {
     const [bands, setBands] = useState<Band[]>([]);
     const [selectedBand, setSelectedBand] = useState('');
 
+    // Sections for generation
+    const [sections, setSections] = useState<Section[]>([]);
+    const [genSection, setGenSection] = useState('');
+
     // Generate modal
     const [showGenerate, setShowGenerate] = useState(false);
     const [genCount, setGenCount] = useState(100);
@@ -47,7 +56,10 @@ export default function AdminQrCodesPage() {
     }, []);
 
     useEffect(() => {
-        if (selectedBand) loadCodes();
+        if (selectedBand) {
+            loadCodes();
+            loadSections();
+        }
     }, [page, filter, selectedBand]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const loadBands = async () => {
@@ -59,6 +71,14 @@ export default function AdminQrCodesPage() {
                 setSelectedBand(data.bands[0].id);
             }
         } catch { /* ignore */ } finally { setLoading(false); }
+    };
+
+    const loadSections = async () => {
+        try {
+            const res = await fetch(`/api/sections?band_id=${selectedBand}`);
+            const data = await res.json();
+            if (res.ok) setSections(data.sections || []);
+        } catch { /* ignore */ }
     };
 
     const loadCodes = async () => {
@@ -82,7 +102,7 @@ export default function AdminQrCodesPage() {
             const res = await fetch('/api/qr-codes', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ bandId: selectedBand, count: genCount, prefix: genPrefix }),
+                body: JSON.stringify({ bandId: selectedBand, count: genCount, prefix: genPrefix, sectionId: genSection || null }),
             });
             const data = await res.json();
             if (res.ok) {
@@ -146,7 +166,7 @@ export default function AdminQrCodesPage() {
             {showGenerate && (
                 <form onSubmit={handleGenerate} className="glass-card rounded-2xl p-6 space-y-4 border-l-4 border-votr-purple">
                     <h3 className="font-bold">Generate QR Codes for {bands.find(b => b.id === selectedBand)?.name}</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-votr-text-muted mb-1">Quantity</label>
                             <input type="number" value={genCount}
@@ -162,6 +182,20 @@ export default function AdminQrCodesPage() {
                                 maxLength={6}
                                 className="w-full px-4 py-3 rounded-xl bg-votr-dark border border-votr-dark-border text-white font-mono focus:outline-none focus:border-votr-purple" />
                             <p className="text-votr-text-muted text-xs mt-1">e.g. VOTR, TRB, YUM</p>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-votr-text-muted mb-1">Section</label>
+                            <select
+                                value={genSection}
+                                onChange={e => setGenSection(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl bg-votr-dark border border-votr-dark-border text-white focus:outline-none focus:border-votr-purple"
+                            >
+                                <option value="">— No Section —</option>
+                                {sections.map(s => (
+                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
+                            </select>
+                            <p className="text-votr-text-muted text-xs mt-1">Pre-assign to a section</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-4">
