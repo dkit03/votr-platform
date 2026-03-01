@@ -19,6 +19,7 @@ const navItems = [
     { href: '/admin/sections', label: 'Sections', icon: '👥' },
     { href: '/admin/sections/assign', label: 'Assign Sections', icon: '📋' },
     { href: '/admin/health', label: 'Platform Health', icon: '💚' },
+    { href: '/dashboard/settings', label: 'Settings', icon: '⚙️' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
