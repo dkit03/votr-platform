@@ -45,7 +45,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             router.push('/login');
             return;
         }
-        setUser(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        setUser(parsed);
+
+        // Refresh band info from database so name/tier changes show immediately
+        if (parsed.bandId) {
+            fetch(`/api/admin/bands`)
+                .then(r => r.json())
+                .then(data => {
+                    const band = data.bands?.find((b: { id: string }) => b.id === parsed.bandId);
+                    if (band) {
+                        const updated = { ...parsed, bandName: band.name, bandTier: band.tier };
+                        localStorage.setItem('votr_user', JSON.stringify(updated));
+                        setUser(updated);
+                    }
+                })
+                .catch(() => { });
+        }
     }, [router]);
 
     const handleLogout = () => {
