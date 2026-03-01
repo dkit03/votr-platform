@@ -16,14 +16,14 @@ interface UserInfo {
 
 const navItems = [
     { href: '/dashboard', label: 'Overview', icon: '📊', tier: 'starter' },
-    { href: '/dashboard/sections', label: 'Sections', icon: '👥', tier: 'core' },
-    { href: '/dashboard/sections/assign', label: 'Assign Sections', icon: '📋', tier: 'core' },
+    { href: '/dashboard/sections', label: 'Sections', icon: '👥', tier: 'core', adminOnly: true },
+    { href: '/dashboard/sections/assign', label: 'Assign Sections', icon: '📋', tier: 'core', adminOnly: true },
     { href: '/dashboard/activity', label: 'Activity', icon: '📈', tier: 'pro' },
     { href: '/dashboard/quality', label: 'Quality', icon: '🛡️', tier: 'core' },
     { href: '/dashboard/songs', label: 'Songs', icon: '🎵', tier: 'starter' },
-    { href: '/dashboard/qr-codes', label: 'QR Codes', icon: '📱', tier: 'starter' },
+    { href: '/dashboard/qr-codes', label: 'QR Codes', icon: '📱', tier: 'starter', adminOnly: true },
     { href: '/dashboard/exports', label: 'Exports', icon: '📥', tier: 'starter' },
-    { href: '/dashboard/settings', label: 'Settings', icon: '⚙️', tier: 'starter' },
+    { href: '/dashboard/settings', label: 'Settings', icon: '⚙️', tier: 'starter', adminOnly: true },
 ];
 
 const tierOrder = ['starter', 'core', 'pro', 'enterprise'];
@@ -101,39 +101,41 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                 {/* Nav */}
                 <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-                    {navItems.map((item) => {
-                        const allowed = isTierAllowed(user.bandTier || 'starter', item.tier);
-                        const isActive = pathname === item.href;
+                    {navItems
+                        .filter(item => !item.adminOnly || user.role === 'platform_admin')
+                        .map((item) => {
+                            const allowed = isTierAllowed(user.bandTier || 'starter', item.tier);
+                            const isActive = pathname === item.href;
 
-                        return (
-                            <div key={item.href} className="relative">
-                                {allowed ? (
-                                    <Link
-                                        href={item.href}
-                                        onClick={() => setSidebarOpen(false)}
-                                        className={`
+                            return (
+                                <div key={item.href} className="relative">
+                                    {allowed ? (
+                                        <Link
+                                            href={item.href}
+                                            onClick={() => setSidebarOpen(false)}
+                                            className={`
                                             flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150
                                             ${isActive
-                                                ? 'bg-votr-gold/10 text-votr-gold'
-                                                : 'text-votr-text-muted hover:bg-white/5 hover:text-white'
-                                            }
+                                                    ? 'bg-votr-gold/10 text-votr-gold'
+                                                    : 'text-votr-text-muted hover:bg-white/5 hover:text-white'
+                                                }
                                         `}
-                                    >
-                                        <span className="text-base">{item.icon}</span>
-                                        {item.label}
-                                    </Link>
-                                ) : (
-                                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-votr-text-muted/40 cursor-not-allowed">
-                                        <span className="text-base opacity-40">{item.icon}</span>
-                                        {item.label}
-                                        <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-votr-dark-border text-votr-text-muted/50 uppercase">
-                                            {item.tier}
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                                        >
+                                            <span className="text-base">{item.icon}</span>
+                                            {item.label}
+                                        </Link>
+                                    ) : (
+                                        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-votr-text-muted/40 cursor-not-allowed">
+                                            <span className="text-base opacity-40">{item.icon}</span>
+                                            {item.label}
+                                            <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-votr-dark-border text-votr-text-muted/50 uppercase">
+                                                {item.tier}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                 </nav>
 
                 {/* User footer */}
