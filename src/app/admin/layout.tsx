@@ -15,6 +15,9 @@ const navItems = [
     { href: '/admin', label: 'Platform Overview', icon: '🌐' },
     { href: '/admin/bands', label: 'Bands', icon: '🎭' },
     { href: '/admin/songs', label: 'Song Library', icon: '🎵' },
+    { href: '/admin/qr-codes', label: 'QR Codes', icon: '📱' },
+    { href: '/admin/sections', label: 'Sections', icon: '👥' },
+    { href: '/admin/sections/assign', label: 'Assign Sections', icon: '📋' },
     { href: '/admin/health', label: 'Platform Health', icon: '💚' },
 ];
 
