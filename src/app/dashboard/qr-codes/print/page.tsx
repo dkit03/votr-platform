@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 interface QRCodeItem {
     id: string;
@@ -22,18 +23,23 @@ export default function QRPrintPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [layout, setLayout] = useState<'grid-6' | 'grid-9' | 'list'>('grid-6');
+    const searchParams = useSearchParams();
 
     useEffect(() => {
-        const stored = localStorage.getItem('votr_user');
-        if (!stored) return;
-        const user = JSON.parse(stored);
+        // Get bandId from URL params (admin flow) or localStorage (band leader flow)
+        let bandId = searchParams.get('bandId');
+        if (!bandId) {
+            const stored = localStorage.getItem('votr_user');
+            if (stored) bandId = JSON.parse(stored).bandId;
+        }
+        if (!bandId) { setError('No band selected.'); setLoading(false); return; }
 
-        fetch(`/api/qr-codes/print?bandId=${user.bandId}&limit=200`)
+        fetch(`/api/qr-codes/print?bandId=${bandId}&limit=200`)
             .then(r => r.json())
             .then(d => { if (d.error) setError(d.error); else setData(d); })
             .catch(() => setError('Failed to load'))
             .finally(() => setLoading(false));
-    }, []);
+    }, [searchParams]);
 
     if (loading) {
         return (

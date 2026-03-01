@@ -134,7 +134,7 @@ export default function AdminQrCodesPage() {
                 </div>
                 <div className="flex items-center gap-3">
                     <Link
-                        href="/dashboard/qr-codes/print"
+                        href={`/dashboard/qr-codes/print?bandId=${selectedBand}`}
                         className="px-4 py-2 rounded-xl border border-votr-dark-border text-votr-text-muted font-medium text-sm transition-all hover:border-votr-purple/30 hover:text-white"
                     >
                         🖨️ Print
