@@ -4,12 +4,13 @@ import QRCode from 'qrcode';
 
 export const dynamic = 'force-dynamic';
 
-// GET /api/qr-codes/print?bandId=xxx&section=all|sectionId&limit=50
+// GET /api/qr-codes/print?bandId=xxx&section=all|sectionId&limit=500&filter=all|unvoted
 export async function GET(req: NextRequest) {
     try {
         const bandId = req.nextUrl.searchParams.get('bandId');
         const section = req.nextUrl.searchParams.get('section') || 'all';
-        const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') || '50'), 200);
+        const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') || '500'), 2000);
+        const codeFilter = req.nextUrl.searchParams.get('filter') || 'all';
         const baseUrl = req.nextUrl.searchParams.get('baseUrl') || 'https://votr-platform.vercel.app';
 
         if (!bandId) {
@@ -23,11 +24,14 @@ export async function GET(req: NextRequest) {
             .from('qr_codes')
             .select('id, code_string, section_id, voted, sections(name)')
             .eq('band_id', bandId)
-            .order('created_at', { ascending: true })
+            .order('created_at', { ascending: false })
             .limit(limit);
 
         if (section !== 'all') {
             query = query.eq('section_id', section);
+        }
+        if (codeFilter === 'unvoted') {
+            query = query.eq('voted', false);
         }
 
         const { data: codes, error } = await query;

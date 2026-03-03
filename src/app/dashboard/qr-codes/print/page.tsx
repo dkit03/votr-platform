@@ -34,7 +34,7 @@ export default function QRPrintPage() {
         }
         if (!bandId) { setError('No band selected.'); setLoading(false); return; }
 
-        fetch(`/api/qr-codes/print?bandId=${bandId}&limit=200`)
+        fetch(`/api/qr-codes/print?bandId=${bandId}&limit=500`)
             .then(r => r.json())
             .then(d => { if (d.error) setError(d.error); else setData(d); })
             .catch(() => setError('Failed to load'))
