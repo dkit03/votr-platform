@@ -48,20 +48,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const parsed = JSON.parse(stored);
         setUser(parsed);
 
-        // Refresh band info from database so name/tier changes show immediately
-        if (parsed.bandId) {
-            fetch(`/api/admin/bands`)
-                .then(r => r.json())
-                .then(data => {
-                    const band = data.bands?.find((b: { id: string }) => b.id === parsed.bandId);
+        // Refresh band info from database (or assign first band for platform admins)
+        fetch(`/api/admin/bands`)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.bands?.length) return;
+
+                if (parsed.bandId) {
+                    // Existing band leader — refresh name/tier
+                    const band = data.bands.find((b: { id: string }) => b.id === parsed.bandId);
                     if (band) {
                         const updated = { ...parsed, bandName: band.name, bandTier: band.tier };
                         localStorage.setItem('votr_user', JSON.stringify(updated));
                         setUser(updated);
                     }
-                })
-                .catch(() => { });
-        }
+                } else {
+                    // Platform admin with no bandId — assign first band for dashboard views
+                    const firstBand = data.bands[0];
+                    const updated = { ...parsed, bandId: firstBand.id, bandName: firstBand.name, bandTier: firstBand.tier };
+                    localStorage.setItem('votr_user', JSON.stringify(updated));
+                    setUser(updated);
+                }
+            })
+            .catch(() => { });
     }, [router]);
 
     const handleLogout = () => {
