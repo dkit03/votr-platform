@@ -46,10 +46,14 @@ export async function POST(req: NextRequest) {
         const userId = authData.user?.id;
         debugInfo.authUserId = userId;
 
-        // ===== LOOKUP BY EMAIL (primary strategy) =====
+        // CRITICAL: Create a FRESH service client for database lookups.
+        // After verifyOtp, the original client has the user's auth session,
+        // which causes queries to run under user RLS context instead of service role.
+        // This was causing "infinite recursion detected in policy for relation band_admins".
+        const dbClient = createServiceClient();
 
         // 1. Check platform_admins by email (use maybeSingle to avoid PGRST116 errors)
-        const { data: platformAdmin, error: platErr } = await supabase
+        const { data: platformAdmin, error: platErr } = await dbClient
             .from('platform_admins')
             .select('id, role, user_id, email')
             .eq('email', email)
@@ -59,7 +63,7 @@ export async function POST(req: NextRequest) {
 
         if (platformAdmin) {
             if (platformAdmin.user_id !== userId && userId) {
-                await supabase.from('platform_admins').update({ user_id: userId }).eq('id', platformAdmin.id);
+                await dbClient.from('platform_admins').update({ user_id: userId }).eq('id', platformAdmin.id);
             }
             return NextResponse.json({
                 success: true,
@@ -78,7 +82,7 @@ export async function POST(req: NextRequest) {
         }
 
         // 2. Check band_admins by email (use maybeSingle)
-        const { data: bandAdmin, error: bandErr } = await supabase
+        const { data: bandAdmin, error: bandErr } = await dbClient
             .from('band_admins')
             .select('id, band_id, role, user_id, email')
             .eq('email', email)
@@ -88,11 +92,11 @@ export async function POST(req: NextRequest) {
 
         if (bandAdmin) {
             if (bandAdmin.user_id !== userId && userId) {
-                await supabase.from('band_admins').update({ user_id: userId }).eq('id', bandAdmin.id);
+                await dbClient.from('band_admins').update({ user_id: userId }).eq('id', bandAdmin.id);
             }
 
             // Fetch band details separately
-            const { data: band } = await supabase
+            const { data: band } = await dbClient
                 .from('bands')
                 .select('name, slug, tier')
                 .eq('id', bandAdmin.band_id)
@@ -120,7 +124,7 @@ export async function POST(req: NextRequest) {
 
         // 3. Fallback: check by user_id
         if (userId) {
-            const { data: bandAdminById } = await supabase
+            const { data: bandAdminById } = await dbClient
                 .from('band_admins')
                 .select('id, band_id, role, email')
                 .eq('user_id', userId)
@@ -129,7 +133,7 @@ export async function POST(req: NextRequest) {
             debugInfo.bandAdminById = { found: !!bandAdminById };
 
             if (bandAdminById) {
-                const { data: band } = await supabase
+                const { data: band } = await dbClient
                     .from('bands')
                     .select('name, slug, tier')
                     .eq('id', bandAdminById.band_id)
