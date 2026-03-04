@@ -28,6 +28,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     try {
         const { id: bandId } = await params;
         const { email, role } = await req.json();
+        console.log('[Band Admins] === ADD LEADER ===');
+        console.log('[Band Admins] Band ID:', bandId, '| Email:', email, '| Role:', role);
 
         if (!email) {
             return NextResponse.json({ error: 'Email is required.' }, { status: 400 });
@@ -44,6 +46,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             .single();
 
         if (existing) {
+            console.log('[Band Admins] ❌ Already exists:', existing.id);
             return NextResponse.json(
                 { error: 'This email is already a leader for this band.' },
                 { status: 409 }
@@ -58,18 +61,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             const existingUser = userList.users.find(u => u.email === email);
             if (existingUser) {
                 userId = existingUser.id;
+                console.log('[Band Admins] Found existing auth user:', userId);
             }
         }
 
         // If no auth user exists, create one (they'll use OTP to sign in)
         if (!userId) {
+            console.log('[Band Admins] No auth user found, creating one...');
             const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
                 email,
                 email_confirm: true, // Auto-confirm so OTP login works
             });
 
             if (createError) {
-                console.error('[Band Admins] Auth user creation error:', createError);
+                console.error('[Band Admins] ❌ Auth user creation error:', createError);
                 return NextResponse.json(
                     { error: `Failed to create user account: ${createError.message}` },
                     { status: 500 }
@@ -77,9 +82,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             }
 
             userId = newUser.user.id;
+            console.log('[Band Admins] ✅ Created auth user:', userId);
         }
 
         // Create the band_admin record
+        console.log('[Band Admins] Inserting band_admin with user_id:', userId);
         const { data: admin, error: insertError } = await supabase
             .from('band_admins')
             .insert({
@@ -92,13 +99,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             .single();
 
         if (insertError) {
-            console.error('[Band Admins] Insert error:', insertError);
+            console.error('[Band Admins] ❌ Insert error:', insertError);
             return NextResponse.json({ error: insertError.message }, { status: 500 });
         }
 
+        console.log('[Band Admins] ✅ Band admin created:', admin);
         return NextResponse.json({ admin }, { status: 201 });
     } catch (error) {
-        console.error('[Band Admins] Create error:', error);
+        console.error('[Band Admins] ❌ Create error:', error);
         return NextResponse.json({ error: 'Internal error.' }, { status: 500 });
     }
 }

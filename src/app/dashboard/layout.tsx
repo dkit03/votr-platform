@@ -38,6 +38,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const pathname = usePathname();
     const [user, setUser] = useState<UserInfo | null>(null);
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [bandReady, setBandReady] = useState(false);
 
     useEffect(() => {
         const stored = localStorage.getItem('votr_user');
@@ -48,11 +49,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const parsed = JSON.parse(stored);
         setUser(parsed);
 
+        // If user already has a bandId, they're ready immediately
+        if (parsed.bandId) {
+            setBandReady(true);
+        }
+
         // Refresh band info from database (or assign first band for platform admins)
         fetch(`/api/admin/bands`)
             .then(r => r.json())
             .then(data => {
-                if (!data.bands?.length) return;
+                if (!data.bands?.length) {
+                    setBandReady(true);
+                    return;
+                }
 
                 if (parsed.bandId) {
                     // Existing band leader — refresh name/tier
@@ -62,15 +71,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         localStorage.setItem('votr_user', JSON.stringify(updated));
                         setUser(updated);
                     }
+                    setBandReady(true);
                 } else {
                     // Platform admin with no bandId — assign first band for dashboard views
                     const firstBand = data.bands[0];
                     const updated = { ...parsed, bandId: firstBand.id, bandName: firstBand.name, bandTier: firstBand.tier };
                     localStorage.setItem('votr_user', JSON.stringify(updated));
                     setUser(updated);
+                    setBandReady(true);
                 }
             })
-            .catch(() => { });
+            .catch(() => {
+                setBandReady(true);
+            });
     }, [router]);
 
     const handleLogout = () => {
@@ -79,7 +92,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         router.push('/login');
     };
 
-    if (!user) {
+    if (!user || !bandReady) {
         return (
             <div className="min-h-dvh flex items-center justify-center">
                 <div className="w-8 h-8 border-2 border-votr-gold border-t-transparent rounded-full animate-spin" />
