@@ -35,7 +35,6 @@ export async function POST(req: NextRequest) {
             userId: authData?.user?.id,
             userEmail: authData?.user?.email,
             error: verifyError?.message,
-            errorStatus: verifyError?.status,
         });
 
         if (verifyError || !authData.session) {
@@ -49,17 +48,26 @@ export async function POST(req: NextRequest) {
         const userId = authData.user?.id;
         console.log('[Auth Verify] ✅ OTP verified. Auth user ID:', userId);
 
-        // Check user role - platform admin first
-        console.log('[Auth Verify] Looking up platform_admins for user_id:', userId);
+        // =============================
+        // STRATEGY: Look up by EMAIL first (more reliable), then sync user_id
+        // =============================
+
+        // 1. Check platform_admins by email
+        console.log('[Auth Verify] Checking platform_admins by email...');
         const { data: platformAdmin, error: platErr } = await supabase
             .from('platform_admins')
-            .select('id, role')
-            .eq('user_id', userId)
+            .select('id, role, user_id, email')
+            .eq('email', email)
             .single();
 
-        console.log('[Auth Verify] Platform admin lookup:', { found: !!platformAdmin, data: platformAdmin, error: platErr?.message });
+        console.log('[Auth Verify] Platform admin by email:', { found: !!platformAdmin, error: platErr?.message });
 
         if (platformAdmin) {
+            // Sync user_id if mismatched
+            if (platformAdmin.user_id !== userId && userId) {
+                console.log('[Auth Verify] ⚠️ Fixing platform_admin user_id mismatch');
+                await supabase.from('platform_admins').update({ user_id: userId }).eq('id', platformAdmin.id);
+            }
             console.log('[Auth Verify] ✅ User is platform_admin');
             return NextResponse.json({
                 success: true,
@@ -77,35 +85,34 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        // Check band admin by user_id
-        console.log('[Auth Verify] Looking up band_admins for user_id:', userId);
+        // 2. Check band_admins by email (simple query, no joins)
+        console.log('[Auth Verify] Checking band_admins by email...');
         const { data: bandAdmin, error: bandErr } = await supabase
-            .from('band_admins')
-            .select('id, band_id, role, bands(name, slug, tier, logo_url, colors_json)')
-            .eq('user_id', userId)
-            .single();
-
-        console.log('[Auth Verify] Band admin lookup by user_id:', { found: !!bandAdmin, data: bandAdmin, error: bandErr?.message });
-
-        // Also check by email as a fallback diagnostic
-        const { data: bandAdminByEmail } = await supabase
             .from('band_admins')
             .select('id, band_id, role, user_id, email')
             .eq('email', email)
             .single();
 
-        console.log('[Auth Verify] Band admin lookup by email (diagnostic):', {
-            found: !!bandAdminByEmail,
-            data: bandAdminByEmail,
-            storedUserId: bandAdminByEmail?.user_id,
-            authUserId: userId,
-            userIdMatch: bandAdminByEmail?.user_id === userId,
-        });
+        console.log('[Auth Verify] Band admin by email:', { found: !!bandAdmin, data: bandAdmin, error: bandErr?.message });
 
         if (bandAdmin) {
+            // Sync user_id if mismatched
+            if (bandAdmin.user_id !== userId && userId) {
+                console.log('[Auth Verify] ⚠️ Fixing band_admin user_id mismatch');
+                await supabase.from('band_admins').update({ user_id: userId }).eq('id', bandAdmin.id);
+            }
+
+            // Now fetch band details separately (avoids join issues)
+            console.log('[Auth Verify] Fetching band details for band_id:', bandAdmin.band_id);
+            const { data: band, error: bandDetailErr } = await supabase
+                .from('bands')
+                .select('name, slug, tier')
+                .eq('id', bandAdmin.band_id)
+                .single();
+
+            console.log('[Auth Verify] Band details:', { found: !!band, data: band, error: bandDetailErr?.message });
+
             console.log('[Auth Verify] ✅ User is band_admin');
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const band: any = bandAdmin.bands;
             return NextResponse.json({
                 success: true,
                 session: {
@@ -117,61 +124,50 @@ export async function POST(req: NextRequest) {
                     email,
                     role: bandAdmin.role,
                     bandId: bandAdmin.band_id,
-                    bandName: band?.name,
-                    bandSlug: band?.slug,
-                    bandTier: band?.tier,
-                    bandLogo: band?.logo_url,
-                    bandColors: band?.colors_json,
+                    bandName: band?.name || null,
+                    bandSlug: band?.slug || null,
+                    bandTier: band?.tier || null,
                 },
             });
         }
 
-        // If we found by email but not by user_id, auto-fix the user_id mismatch
-        if (bandAdminByEmail && bandAdminByEmail.user_id !== userId) {
-            console.log('[Auth Verify] ⚠️ USER ID MISMATCH DETECTED! Fixing...');
-            console.log('[Auth Verify] Stored user_id:', bandAdminByEmail.user_id, '| Auth user_id:', userId);
-
-            const { error: updateError } = await supabase
+        // 3. Fallback: check by user_id (in case email was stored differently)
+        if (userId) {
+            console.log('[Auth Verify] Fallback: checking band_admins by user_id:', userId);
+            const { data: bandAdminById } = await supabase
                 .from('band_admins')
-                .update({ user_id: userId })
-                .eq('id', bandAdminByEmail.id);
+                .select('id, band_id, role, email')
+                .eq('user_id', userId)
+                .single();
 
-            if (!updateError) {
-                console.log('[Auth Verify] ✅ Fixed user_id mismatch. Re-fetching band admin...');
-                const { data: fixedAdmin } = await supabase
-                    .from('band_admins')
-                    .select('id, band_id, role, bands(name, slug, tier, logo_url, colors_json)')
-                    .eq('id', bandAdminByEmail.id)
+            if (bandAdminById) {
+                const { data: band } = await supabase
+                    .from('bands')
+                    .select('name, slug, tier')
+                    .eq('id', bandAdminById.band_id)
                     .single();
 
-                if (fixedAdmin) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const band: any = fixedAdmin.bands;
-                    return NextResponse.json({
-                        success: true,
-                        session: {
-                            access_token: authData.session.access_token,
-                            refresh_token: authData.session.refresh_token,
-                        },
-                        user: {
-                            id: userId,
-                            email,
-                            role: fixedAdmin.role,
-                            bandId: fixedAdmin.band_id,
-                            bandName: band?.name,
-                            bandSlug: band?.slug,
-                            bandTier: band?.tier,
-                            bandLogo: band?.logo_url,
-                            bandColors: band?.colors_json,
-                        },
-                    });
-                }
-            } else {
-                console.error('[Auth Verify] ❌ Failed to fix user_id:', updateError.message);
+                console.log('[Auth Verify] ✅ Found band_admin by user_id fallback');
+                return NextResponse.json({
+                    success: true,
+                    session: {
+                        access_token: authData.session.access_token,
+                        refresh_token: authData.session.refresh_token,
+                    },
+                    user: {
+                        id: userId,
+                        email,
+                        role: bandAdminById.role,
+                        bandId: bandAdminById.band_id,
+                        bandName: band?.name || null,
+                        bandSlug: band?.slug || null,
+                        bandTier: band?.tier || null,
+                    },
+                });
             }
         }
 
-        console.log('[Auth Verify] ❌ No matching account found for user_id:', userId, 'or email:', email);
+        console.log('[Auth Verify] ❌ No matching account found for email:', email, 'or user_id:', userId);
         return NextResponse.json(
             { error: 'Account not found.', code: 'NO_ACCOUNT' },
             { status: 403 }
@@ -185,4 +181,3 @@ export async function POST(req: NextRequest) {
         );
     }
 }
-
