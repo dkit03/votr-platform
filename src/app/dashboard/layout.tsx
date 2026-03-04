@@ -39,6 +39,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const [user, setUser] = useState<UserInfo | null>(null);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [bandReady, setBandReady] = useState(false);
+    const [allBands, setAllBands] = useState<{ id: string; name: string; tier: string }[]>([]);
 
     useEffect(() => {
         const stored = localStorage.getItem('votr_user');
@@ -63,8 +64,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     return;
                 }
 
+                // Store all bands for the switcher (platform admins only)
+                if (parsed.role === 'platform_admin') {
+                    setAllBands(data.bands.map((b: { id: string; name: string; tier: string }) => ({
+                        id: b.id, name: b.name, tier: b.tier,
+                    })));
+                }
+
                 if (parsed.bandId) {
-                    // Existing band leader — refresh name/tier
+                    // Existing user — refresh name/tier
                     const band = data.bands.find((b: { id: string }) => b.id === parsed.bandId);
                     if (band) {
                         const updated = { ...parsed, bandName: band.name, bandTier: band.tier };
@@ -85,6 +93,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 setBandReady(true);
             });
     }, [router]);
+
+    const handleBandSwitch = (bandId: string) => {
+        const band = allBands.find(b => b.id === bandId);
+        if (!band || !user) return;
+        const updated = { ...user, bandId: band.id, bandName: band.name, bandTier: band.tier };
+        localStorage.setItem('votr_user', JSON.stringify(updated));
+        // Reload page to re-fetch all dashboard data for new band
+        window.location.reload();
+    };
 
     const handleLogout = () => {
         localStorage.removeItem('votr_session');
@@ -128,7 +145,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             height={44}
                         />
                     </Link>
-                    {user.bandName && (
+                    {user.role === 'platform_admin' && allBands.length > 1 ? (
+                        <select
+                            value={user.bandId || ''}
+                            onChange={e => handleBandSwitch(e.target.value)}
+                            className="mt-2 w-full px-2 py-1.5 rounded-lg bg-votr-dark border border-votr-dark-border text-xs text-white cursor-pointer focus:outline-none focus:border-votr-gold transition-colors"
+                        >
+                            {allBands.map(band => (
+                                <option key={band.id} value={band.id} className="bg-votr-dark">
+                                    {band.name} ({band.tier})
+                                </option>
+                            ))}
+                        </select>
+                    ) : user.bandName && (
                         <p className="text-votr-text-muted text-xs mt-2 truncate">
                             {user.bandName}
                             <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider bg-votr-gold/10 text-votr-gold">
