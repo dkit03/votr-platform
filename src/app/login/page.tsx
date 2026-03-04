@@ -57,7 +57,9 @@ export default function DashboardLoginPage() {
             const data = await res.json();
 
             if (!res.ok) {
-                setError(data.error || 'Invalid code.');
+                // Show debug info if available (temporary for troubleshooting)
+                const debugStr = data.debug ? `\n\nDebug: ${JSON.stringify(data.debug, null, 2)}` : '';
+                setError((data.error || 'Invalid code.') + debugStr);
                 setLoading(false);
                 return;
             }

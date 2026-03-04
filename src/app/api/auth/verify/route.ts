@@ -5,14 +5,15 @@ export const dynamic = 'force-dynamic';
 
 // POST /api/auth/verify — verifies OTP and returns session info
 export async function POST(req: NextRequest) {
+    const debugInfo: Record<string, unknown> = {};
+
     try {
         const { email: rawEmail, token } = await req.json();
         const email = rawEmail?.trim().toLowerCase();
-        console.log('[Auth Verify] === VERIFY ATTEMPT ===');
-        console.log('[Auth Verify] Email:', email, '| Token:', token);
+        debugInfo.email = email;
+        debugInfo.hasToken = !!token;
 
         if (!email || !token) {
-            console.log('[Auth Verify] ❌ Missing fields');
             return NextResponse.json(
                 { error: 'Email and verification code are required.', code: 'MISSING_FIELDS' },
                 { status: 400 }
@@ -22,53 +23,44 @@ export async function POST(req: NextRequest) {
         const supabase = createServiceClient();
 
         // Verify OTP
-        console.log('[Auth Verify] Calling verifyOtp...');
         const { data: authData, error: verifyError } = await supabase.auth.verifyOtp({
             email,
             token,
             type: 'email',
         });
 
-        console.log('[Auth Verify] OTP result:', {
+        debugInfo.otpResult = {
             hasSession: !!authData?.session,
             hasUser: !!authData?.user,
             userId: authData?.user?.id,
-            userEmail: authData?.user?.email,
             error: verifyError?.message,
-        });
+        };
 
         if (verifyError || !authData.session) {
-            console.log('[Auth Verify] ❌ OTP verification failed:', verifyError?.message);
             return NextResponse.json(
-                { error: 'Invalid or expired verification code.', code: 'INVALID_OTP' },
+                { error: 'Invalid or expired verification code.', code: 'INVALID_OTP', debug: debugInfo },
                 { status: 401 }
             );
         }
 
         const userId = authData.user?.id;
-        console.log('[Auth Verify] ✅ OTP verified. Auth user ID:', userId);
+        debugInfo.authUserId = userId;
 
-        // =============================
-        // STRATEGY: Look up by EMAIL first (more reliable), then sync user_id
-        // =============================
+        // ===== LOOKUP BY EMAIL (primary strategy) =====
 
-        // 1. Check platform_admins by email
-        console.log('[Auth Verify] Checking platform_admins by email...');
+        // 1. Check platform_admins by email (use maybeSingle to avoid PGRST116 errors)
         const { data: platformAdmin, error: platErr } = await supabase
             .from('platform_admins')
             .select('id, role, user_id, email')
             .eq('email', email)
-            .single();
+            .maybeSingle();
 
-        console.log('[Auth Verify] Platform admin by email:', { found: !!platformAdmin, error: platErr?.message });
+        debugInfo.platformAdmin = { found: !!platformAdmin, error: platErr?.message };
 
         if (platformAdmin) {
-            // Sync user_id if mismatched
             if (platformAdmin.user_id !== userId && userId) {
-                console.log('[Auth Verify] ⚠️ Fixing platform_admin user_id mismatch');
                 await supabase.from('platform_admins').update({ user_id: userId }).eq('id', platformAdmin.id);
             }
-            console.log('[Auth Verify] ✅ User is platform_admin');
             return NextResponse.json({
                 success: true,
                 session: {
@@ -85,34 +77,29 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        // 2. Check band_admins by email (simple query, no joins)
-        console.log('[Auth Verify] Checking band_admins by email...');
+        // 2. Check band_admins by email (use maybeSingle)
         const { data: bandAdmin, error: bandErr } = await supabase
             .from('band_admins')
             .select('id, band_id, role, user_id, email')
             .eq('email', email)
-            .single();
+            .maybeSingle();
 
-        console.log('[Auth Verify] Band admin by email:', { found: !!bandAdmin, data: bandAdmin, error: bandErr?.message });
+        debugInfo.bandAdmin = { found: !!bandAdmin, data: bandAdmin, error: bandErr?.message };
 
         if (bandAdmin) {
-            // Sync user_id if mismatched
             if (bandAdmin.user_id !== userId && userId) {
-                console.log('[Auth Verify] ⚠️ Fixing band_admin user_id mismatch');
                 await supabase.from('band_admins').update({ user_id: userId }).eq('id', bandAdmin.id);
             }
 
-            // Now fetch band details separately (avoids join issues)
-            console.log('[Auth Verify] Fetching band details for band_id:', bandAdmin.band_id);
-            const { data: band, error: bandDetailErr } = await supabase
+            // Fetch band details separately
+            const { data: band } = await supabase
                 .from('bands')
                 .select('name, slug, tier')
                 .eq('id', bandAdmin.band_id)
-                .single();
+                .maybeSingle();
 
-            console.log('[Auth Verify] Band details:', { found: !!band, data: band, error: bandDetailErr?.message });
+            debugInfo.band = { found: !!band, data: band };
 
-            console.log('[Auth Verify] ✅ User is band_admin');
             return NextResponse.json({
                 success: true,
                 session: {
@@ -131,23 +118,23 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        // 3. Fallback: check by user_id (in case email was stored differently)
+        // 3. Fallback: check by user_id
         if (userId) {
-            console.log('[Auth Verify] Fallback: checking band_admins by user_id:', userId);
             const { data: bandAdminById } = await supabase
                 .from('band_admins')
                 .select('id, band_id, role, email')
                 .eq('user_id', userId)
-                .single();
+                .maybeSingle();
+
+            debugInfo.bandAdminById = { found: !!bandAdminById };
 
             if (bandAdminById) {
                 const { data: band } = await supabase
                     .from('bands')
                     .select('name, slug, tier')
                     .eq('id', bandAdminById.band_id)
-                    .single();
+                    .maybeSingle();
 
-                console.log('[Auth Verify] ✅ Found band_admin by user_id fallback');
                 return NextResponse.json({
                     success: true,
                     session: {
@@ -167,16 +154,16 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        console.log('[Auth Verify] ❌ No matching account found for email:', email, 'or user_id:', userId);
+        // Include debug info in the error response so we can see it in the browser
         return NextResponse.json(
-            { error: 'Account not found.', code: 'NO_ACCOUNT' },
+            { error: 'Account not found.', code: 'NO_ACCOUNT', debug: debugInfo },
             { status: 403 }
         );
 
     } catch (error) {
-        console.error('[Auth Verify] ❌ Unexpected error:', error);
+        debugInfo.exception = String(error);
         return NextResponse.json(
-            { error: 'Something went wrong.', code: 'INTERNAL_ERROR' },
+            { error: 'Something went wrong.', code: 'INTERNAL_ERROR', debug: debugInfo },
             { status: 500 }
         );
     }
